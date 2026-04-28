@@ -1,0 +1,376 @@
+I have a Lenovo Legion Y520 laptop and I want to install Linux Mint on it. The laptop has a small SSD and a bigger HDD. I am following the installation process of Linux Mint and have reached the "Installation type" section where I'm supposed to decide the manual partitioning. 
+I want the SSD to be used for booting so the computer will boot fast and i want to use the HDD for file storage of files like ebooks and images. 
+On the instructions I read online it says I should find the SSD and delete existing partitions on the SSD util it shows as free space, then click the "+" button, set type primary and location beginning of space and use as Ext4 journaling file system and Mount point `/`. But I don't understand how to do this. Please tell me the steps to do this correctly because i don't know how to delete partitions or any of the other steps mentioned in the instructions.
+
+On the "Installation type" screen a see a list of devices (their size is shown, whether they're used, and the system):
+Device /dev/nvme0n1 
+Device free space Size 1MB
+Device /dev/nvme0n1p1 efi Size 272MB Used 37MB System Windows Boot Manager
+Device /dev/nvme0n1p2  Size 16MB Used unknown
+Device /dev/nvme0n1p3 ntfs Size 126696MB Used 81448MB
+Device /dev/nvme0n1p4 ntfs Size 1048MB Used 1048MB
+Device free space Size 0MB
+Device /dev/sda
+Device free space Size 1MB
+Device /dev/sda1 Type efi Size 536MB Used 33MB
+Device /dev/sda2 Type ext4 Size 999666MB Used 767482MB System Ubuntu 24.04.4 LTS (24.04)
+Device free space Size 0MB
+  
+ It looks like you’ve reached the most technical part of the installation! Don't worry—partitioning can feel intimidating because of the naming conventions, but it’s straightforward once you know which "Device" is which.
+
+Based on your list, your **SSD** is `/dev/nvme0n1` (about 128GB) and your **HDD** is `/dev/sda` (about 1TB).
+
+### Important Warning
+Following these steps will **completely erase everything on your SSD**, including Windows and any files currently stored there. Since your HDD already has an Ubuntu installation on it, we will also need to format that to use it for your files. **Ensure you have backed up any important data before proceeding.**
+
+---
+
+### Step 1: Clean the SSD (The Boot Drive)
+We need to clear the Windows partitions from the SSD so Linux Mint can take over.
+
+1.  Look at the list under **`/dev/nvme0n1`**.
+2.  Click on each partition listed under it (`p1`, `p2`, `p3`, `p4`) one by one.
+3.  For each one, click the **minus ( - )** button.
+4.  Once you have deleted all of them, they will merge into a single entry called **"free space"** under `/dev/nvme0n1`.
+
+### Step 2: Create the Root Partition (`/`)
+This is where the Linux Mint operating system and your apps will live.
+
+1.  Select the **"free space"** you just created under `/dev/nvme0n1`.
+2.  Click the **plus ( + )** button.
+3.  In the popup window:
+    * **Size:** Use the maximum amount available (it should default to this).
+    * **Type for the new partition:** Primary.
+    * **Location:** Beginning of this space.
+    * **Use as:** Ext4 journaling file system.
+    * **Mount point:** Select `/` from the dropdown.
+4.  Click **OK**.
+
+### Step 3: Prepare the HDD (The Storage Drive)
+To use your 1TB HDD for ebooks and images, we need to format it so it's clean and ready for Mint.
+
+1.  Look at the list under **`/dev/sda`**.
+2.  Select `/dev/sda1` and click the **minus ( - )** button.
+3.  Select `/dev/sda2` (your old Ubuntu partition) and click the **minus ( - )** button.
+4.  Now select the **"free space"** under `/dev/sda` and click the **plus ( + )** button.
+5.  In the popup:
+    * **Size:** Leave it at max.
+    * **Type:** Primary.
+    * **Use as:** Ext4 journaling file system.
+    * **Mount point:** Type in `/data` or `/mnt/storage` (or you can leave it blank and "mount" it later after installation, which is often easier for beginners).
+6.  Click **OK**.
+
+### Step 4: Boot Loader Installation
+At the bottom of the window, there is a dropdown for **"Device for boot loader installation."**
+
+* Make sure **`/dev/nvme0n1`** (the SSD) is selected here. This ensures the computer looks at the fast drive first when you turn it on.
+
+---
+
+### Final Check
+Your screen should now show:
+* A partition on **nvme0n1** with the mount point `/`.
+* A partition on **sda** (either blank or mounted to a folder you named).
+* The bootloader pointing to the SSD.
+
+Click **Install Now**. A summary will pop up asking you to confirm the changes—take one last look to ensure you're okay with those drives being formatted, then click **Continue**!
+
+Once you are inside Linux Mint, your HDD will likely appear as a drive icon in your File Manager. You can click it to "mount" it and start dragging your ebooks and images there.
+
+When I clicked the "Install now" button a popup with the message below appeared: "Go back to the menu and resume partitioning? No EFI System Partition was found. This system will likely not be able to boot sucessfully, and the installation process may fail. Please go back and add an EFI System Partition, or continue at your own risk."
+
+Ah, the "EFI" warning. Modern computers use a system called **UEFI** to start up, and it requires a tiny, dedicated "landing pad" partition to store the boot files. When you deleted all the partitions on the SSD in the previous step, you also deleted the old Windows EFI partition.
+
+Don't worry—this is a quick fix. You just need to create one small extra partition on your SSD before you create the main one.
+
+### How to Fix the EFI Error
+
+Instead of using the *entire* SSD for your `/` (root) partition, we need to carve out a small slice at the beginning for the bootloader. 
+
+1.  **Delete the partition you just made:** Select the new partition on `/dev/nvme0n1` and click the **minus ( - )** button so it becomes "free space" again.
+2.  **Create the EFI Partition:**
+    * Select the **free space** on `/dev/nvme0n1`.
+    * Click the **plus ( + )** button.
+    * **Size:** Change this to **500MB** (this is plenty).
+    * **Type:** Primary.
+    * **Location:** Beginning of this space.
+    * **Use as:** Select **EFI System Partition** from the dropdown menu. (Note: On some versions of the installer, this is listed under the "Use as" list specifically as "EFI System Partition," not Ext4).
+    * Click **OK**.
+3.  **Create the Root Partition (the rest of the space):**
+    * Select the **remaining free space** on `/dev/nvme0n1`.
+    * Click the **plus ( + )** button.
+    * **Size:** Leave it at the remaining maximum size.
+    * **Type:** Primary.
+    * **Use as:** Ext4 journaling file system.
+    * **Mount point:** `/`
+    * Click **OK**.
+
+---
+
+### What your SSD (`/dev/nvme0n1`) should look like now:
+| Partition | Type | Size | Mount Point / Use |
+| :--- | :--- | :--- | :--- |
+| **p1** | efi | 500 MB | EFI System Partition |
+| **p2** | ext4 | ~125 GB | / |
+
+### One Final Check
+Ensure the **"Device for boot loader installation"** dropdown at the bottom is still set to **`/dev/nvme0n1`** (the SSD).
+
+Now, when you click **Install Now**, the warning should stay away, and Linux Mint will have exactly what it needs to start up properly!
+
+I'm following the Linux Installation and I'm asked to choose a name and a computer's name. What's the difference between a name and a computer's name? How will this information appear in the terminal?
+
+Great question! This is where you give your system its identity. These two names serve different purposes in the "social life" of your computer.
+
+### The Difference
+
+* **Your Name:** This is your **Real Name** or "Full Name" (e.g., *Alex Smith*). It’s mostly cosmetic. It appears on the login screen and in the "Users" settings.
+* **Username:** (Which usually follows "Your Name") This is the **short, lowercase name** the system uses internally (e.g., *alex*). You’ll use this to log in.
+* **Your Computer's Name (Hostname):** This is the name your laptop uses to identify itself on a **network** (e.g., *legion-laptop*). If you connect to Wi-Fi, other devices or your router will see this name.
+
+---
+
+### How it appears in the Terminal
+
+In Linux, the terminal prompt follows a very specific "Who @ Where" format by default. It looks like this:
+
+`username@hostname:~$`
+
+**For example:**
+If your username is **alex** and your computer's name is **legion-y520**, your terminal prompt will look like this:
+
+`alex@legion-y520:~$`
+
+
+
+### Why does this matter?
+
+1.  **Context:** The terminal shows you exactly **who** you are acting as (important if you ever switch to the "root" admin user) and **which** machine you are controlling (important if you ever remotely connect to another computer).
+2.  **Organization:** The `~` symbol represents your "Home" folder, and the `$` means you are a standard user (not the system administrator).
+
+### Pro-Tips for Choosing Names:
+* **Computer Name:** Keep it short and avoid spaces. Use dashes (like `my-laptop`) instead.
+* **Username:** Stick to lowercase letters and no spaces. It makes typing commands much faster!
+
+Does that make sense, or are you stuck on what to call your new setup?
+
+Linux Mint has been installed and I've logged in. You previously said "Once you are inside Linux Mint, your HDD will likely appear as a drive icon in your File Manager. You can click it to "mount" it and start dragging your ebooks and images there.". I clicked the icon shaped like a folder next to the Linux mint icon at the bottom of the screen. I do not see the HDD inside. How can I look for the HDD? The options I see after clicking the folder icon are: Home, Desktop, Documents, Music, Pictures, Videos, Downloads, Recent, File System, Trash, Network.
+
+It sounds like the HDD is hiding because it hasn't been "mounted" (essentially, Linux hasn't opened the door to that drive yet). Since you didn't give it a specific name during the installation, it won't show up in that main list of folders like "Documents" or "Music."
+
+Here are the two ways to find it:
+
+### Method 1: Check the Sidebar
+Open that folder icon again (this is called **Nemo**, the File Manager). Look at the very left-hand sidebar.
+* Scroll down past **Network**. 
+* Look for a section called **Devices**.
+* You should see an icon that looks like a hard drive. It might be named something like **"1.0 TB Volume"** or **"999 GB Volume."**
+* **Click it.** Once you click it, a "mount" icon (like an eject symbol) will appear next to it, and the drive will open up. You can now drag your folders in there.
+
+### Method 2: Use the "Disks" Utility (If it’s not in the sidebar)
+If you don’t see it in the sidebar, we might need to tell Linux to wake it up.
+
+1.  Click the **Linux Mint Menu** (the green icon in the bottom left).
+2.  Type **Disks** and open the application that looks like a silver hard drive with a gear.
+3.  On the left side of the Disks window, you will see two drives: your 128GB SSD and your **1TB Hard Disk**. Click the 1TB one.
+4.  In the middle of the window, you’ll see a large block representing your partition. Click the **Play button (▶)** underneath it. 
+    * This "Mounts" the drive.
+    * A link will appear under the "Contents" section (usually something like `/media/yourname/numbers-and-letters`). 
+5.  Click that link, and it will open the drive in your File Manager.
+
+
+
+---
+
+### Pro-Tip: Make it "Sticky"
+By default, Linux might "unmount" the HDD when you restart. If you want that drive to always be there every time you turn on the computer:
+
+1.  In that **Disks** utility, select the 1TB partition.
+2.  Click the **Additional Partition Options** (the little gears icon next to the Play/Square button).
+3.  Select **Edit Mount Options**.
+4.  Toggle **User Session Defaults** to **OFF**.
+5.  Ensure **Mount at system startup** is checked.
+6.  Click **OK**, enter your password, and that drive will now stay in your sidebar forever!
+
+Do you see a "1.0 TB Volume" showing up in that Disks tool?
+
+The HDD is in `/data`. I tried to make a shortcut to it on the Desktop by opening the File System and selectrig and dragging unto the Desktop the `Data` folder while pressing Ctrl + Shift. This created a folder on my Desktop with the text `data` and a small icon of a closed padlock. When I click it open there is already a folder i the `data` folder (which I did not create) called "lost+found" which when I click it open is empty. What is the explanation for this? Did I create the shortcut wrong? What is the "lost+found" folder for?
+
+Welcome to the world of Linux "Permissions"! You haven't done anything wrong, but you’ve run into a classic security feature.
+
+Because you mounted that drive at the "Root" level (the `/` folder), the system thinks that folder belongs to the **System Administrator (root)**, not to **your user account**. That little padlock icon is the computer’s way of saying, "You can look, but you can't touch."
+
+Here is the breakdown of what's happening:
+
+### 1. What is the `lost+found` folder?
+Don't worry, you didn't put it there. Every Linux drive formatted as **Ext4** creates this folder automatically. 
+* **Its purpose:** If your computer ever crashes or loses power and the file system gets slightly corrupted, Linux runs a check when it restarts. If it finds "homeless" pieces of data that it can't identify, it stuffs them into `lost+found` so you can try to recover them.
+* **Can you delete it?** You shouldn't. Just ignore it; it’s like a digital "junk drawer" for emergencies.
+
+### 2. Why is there a padlock icon?
+In Linux, folders have "Owners." Right now, the owner of `/data` is the system. Since your user account doesn't own it, you don't have permission to create new folders or drag images into it yet.
+
+### 3. How to fix the shortcut and permissions
+We need to tell Linux that **you** are the boss of that folder. Open your terminal (press `Ctrl + Alt + T`) and type the following command carefully:
+
+```bash
+sudo chown -R username:username /data
+```
+*(Replace `username` with the actual username you chose during installation. For example, if your name is alex, type `alex:alex`).*
+
+**What this does:**
+* `sudo`: Runs the command as an administrator.
+* `chown`: Short for "Change Owner."
+* `-R`: Operates "Recursively" (applies to everything inside the folder too).
+* `/data`: The target folder.
+
+After you run that and enter your password (you won't see dots as you type, just hit Enter), **the padlock icon should disappear.**
+
+### 4. Did you create the shortcut correctly?
+Yes! `Ctrl + Shift + Drag` is the correct way to create a "Symbolic Link" (shortcut) in Linux Mint. 
+
+Once the padlock is gone, you can open that `/data` folder on your desktop, right-click, and create a new folder called "Ebooks" or "Images."
+
+**Quick Tip:** If you want to make that folder look nicer on your desktop, you can right-click the shortcut, go to **Properties**, click the icon image, and pick a different icon from the list!
+
+Does the padlock disappear after you run that `chown` command?
+
+Yes, the padlock has not disappeared. !!!I originally typed this incorrectly whic is why below I'm given further instructions about this
+I want my computer to install all of the needed updates so I turned on the Update Manager and I'm letting update everything it found needs an upgrade. The laptop is a Lenovo Legion Y520 which has NVIDIA GEFORCE GTX. Will letting the Update Manager update the upgrades it found guarantee I get the NVIDIA drivers the computer needs to run its best? If not, how can I get the NVIDIA drivers?
+
+The short answer is **no**, the Update Manager usually only updates your system files and the "open-source" drivers. While these open-source drivers work, they won't give your **NVIDIA GeForce GTX** the power it needs for gaming or high-performance tasks.
+
+To get the official, high-performance drivers, you need to use a specific tool in Linux Mint.
+
+### How to install the NVIDIA Drivers
+
+1.  Click the **Linux Mint Menu** (the green icon).
+2.  Type **Driver Manager** and open it.
+3.  Enter your password when prompted. The app will "look for hardware drivers" for a few moments.
+4.  You will see a list of NVIDIA drivers. 
+    * Look for the one labeled **"nvidia-driver-[number] (recommended)"**. This is usually the "proprietary" driver.
+5.  Select that driver and click **Apply Changes**.
+6.  Once it finishes downloading and installing, you **must restart your computer**.
+
+
+
+---
+
+### Why the padlock on `/data` didn't disappear
+
+If the `chown` command didn't remove the padlock, it’s likely because the system hasn't "refreshed" its view of the folder, or there was a tiny typo in the username. Let's try a "forceful" refresh:
+
+1.  **Verify your exact username:** Type `whoami` in the terminal. Use exactly what it spits out.
+2.  **Run the command again with a slight tweak:**
+    ```bash
+    sudo chown $USER:$USER /data
+    sudo chmod 755 /data
+    ```
+    *(Note: `$USER` is a shortcut that automatically inserts your logged-in name so you don't have to type it).*
+3.  **Refresh the Desktop:** Right-click an empty space on your desktop and select **Refresh**, or simply log out and log back in.
+
+### One more thing: The "Fast Boot" Trap
+Since you came from Windows, there is one setting that can "lock" your HDD and prevent Linux from taking ownership of it. 
+
+If the padlock persists after the steps above, it might be because Windows left the drive in a "Hibernated" state. Even though you deleted the Windows partition on the SSD, if the HDD was touched by Windows "Fast Startup," it marks the drive as "Read Only" for safety. 
+
+**If the padlock stays:**
+1.  Open the **Disks** utility again.
+2.  Select the 1TB partition.
+3.  Click the **Square button (Stop)** to unmount it.
+4.  Click the **Play button (Start)** to remount it.
+5.  Check the desktop icon again.
+
+How did the Driver Manager search go? Did it find a "recommended" NVIDIA driver for you?
+
+I have selected the nvidia-driver-number (recommended) option.
+I also see as an option below related to "Realtek Semiconductor Corp.: RTL8821A Bluetooth", then the text "This device is not working". Then the clickable option (not selected) rlt8812au-dkms (open-source). Then a version number and more information.
+Under this is is the currently selected option "Do not use this device".
+What is this Realtek Semiconductor option and should I select it or leave is unselected?
+
+That **Realtek** device is your laptop's **Wi-Fi and Bluetooth card**. 
+
+Specifically, the `RTL8821A` chip handles both your wireless internet and your ability to connect Bluetooth devices like headphones or mice. The reason it says "This device is not working" and has "Do not use" selected is that Linux doesn't always include the "proprietary" (secret code) drivers for certain Realtek chips by default.
+
+### Should you select it?
+**Yes, you absolutely should.** If you leave it on "Do not use," your Bluetooth likely won't work at all, and your Wi-Fi might be unstable or slow (or not work at all if you aren't currently plugged into an Ethernet cable).
+
+**The steps to take:**
+1.  Select the radio button for **`rtl8812au-dkms`**.
+2.  Click **Apply Changes**.
+3.  Wait for the progress bar to finish. This one might take a minute because it's "building" a module specifically for your system.
+
+---
+
+### Why is it called "dkms"?
+You’ll see **DKMS** in the name. This stands for *Dynamic Kernel Module Support*. 
+In plain English: It’s a helper tool that ensures when Linux Mint gets an update in the future, your Wi-Fi and Bluetooth drivers "re-build" themselves so they don't break. It’s a very good thing to have.
+
+### Summary of what to do now:
+Since you’ve already selected the **NVIDIA driver** and now the **Realtek driver**:
+1.  Apply the changes for both.
+2.  **Restart your computer.** ### After the Restart:
+* **Graphics:** Your screen might look sharper, and if you have an external monitor plugged into the HDMI port, it should now work perfectly.
+* **Bluetooth:** Click the little Bluetooth icon near the clock in the bottom right; you should now be able to turn it "On" and find devices.
+* **The Padlock:** Check that `/data` shortcut on your desktop. If the padlock is still there after the restart, we have one last "secret weapon" command to try, but usually, a full reboot after the `chown` command fixes the visual glitch!
+
+How did the installation of those two drivers go? Any error messages, or did it finish smoothly?
+
+I got the error message below, please help me understand it (was I supposed to perform this while connected via an Ethernet connection instead of Wi-fi for this install to work?).
+An error occurred. Error while installing package: installed rlt8812au-dkms package post-installation script subprocess returned error exit status 10.
+
+That specific error (`exit status 10`) during a driver installation usually means the system tried to "build" the driver but ran into a conflict—often because it needs a specific set of tools (headers) to match your current Linux kernel, or because **Secure Boot** is interfering.
+
+While having an Ethernet connection is always "safer" for updates, that wasn't necessarily the cause. The "post-installation script" error means the computer downloaded the files fine, but failed to "stitch" them into the system.
+
+Here is how to fix this and get your Realtek chip working.
+
+---
+
+### Step 1: Install the "Building" Tools
+Before the driver can install, Linux needs the "recipe" and the "tools" for your specific system version. Open your terminal and run:
+
+```bash
+sudo apt update
+sudo apt install build-essential linux-headers-$(uname -r)
+```
+*(The `$(uname -r)` part is a shortcut that automatically finds exactly which version of Linux you are running).*
+
+### Step 2: Clear the "Broken" Driver
+Since the last installation failed, we need to clear the "broken" files before trying again:
+
+```bash
+sudo apt purge rtl8812au-dkms
+sudo apt autoremove
+```
+
+### Step 3: Re-install via Terminal
+Sometimes the terminal gives us more information than the "Driver Manager" window. Try installing it this way:
+
+```bash
+sudo apt install rtl8812au-dkms
+```
+
+---
+
+### If it still fails: The "Secure Boot" Culprit
+If you get another error during that last step, it is almost certainly because of **Secure Boot** in your laptop's BIOS.
+
+**The Explanation:**
+Secure Boot is a security gatekeeper. It only allows "signed" software to touch the heart of the computer (the Kernel). Because the Realtek driver is being "built" right now on your desk, it isn't "signed" by a major corporation like Microsoft or Canonical, so the system blocks it.
+
+**How to fix it:**
+1.  **Restart your computer** and repeatedly tap **F2** (or **Fn + F2**) to enter the BIOS/Setup.
+2.  Look for a tab labeled **Security** or **Boot**.
+3.  Find **Secure Boot** and set it to **Disabled**.
+4.  Press **F10** to Save and Exit.
+5.  Once you log back into Linux Mint, try **Step 3** again. It should slide right in without a protest.
+
+---
+
+### Check the Padlock One Last Time
+Since you just restarted (or are about to), check that `/data` folder on your desktop. If the padlock is **still** there after the `chown` command from earlier, it means the drive is mounting as "Read-Only." 
+
+If it's still locked, let me know—we can check a specific file called `/etc/fstab` that controls how that drive "wakes up" when you turn the computer on.
+
+How did the terminal commands for the Realtek driver go?
